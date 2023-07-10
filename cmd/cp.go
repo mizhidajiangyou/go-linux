@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-func CP(src, dst string) error {
+func Cp(src, dst string) error {
 	// 展开源文件或目录的协同变量
 	src = os.ExpandEnv(src)
 	dst = os.ExpandEnv(dst)
