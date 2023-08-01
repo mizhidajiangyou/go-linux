@@ -35,7 +35,10 @@ func init() {
 }
 
 func openFile(file string) (*os.File, error) {
-	cmd.Touch(file)
+	e := cmd.Touch(file)
+	if e != nil {
+		panic(fmt.Sprintf("打开日志文件失败：%s\n", e))
+	}
 	f, e := os.OpenFile(file, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if e != nil {
 		panic(fmt.Sprintf("打开日志文件失败：%s\n", e))
@@ -118,7 +121,7 @@ func compressLogFile(logFile string) error {
 	defer file.Close()
 
 	// 获取当前日期作为压缩文件名的一部分
-	dateStr := time.Now().Format("2006-01-02")
+	dateStr := time.Now().Format("2006-01-02-15-04-05")
 	compressedFileName := logFile + "." + dateStr + ".tar.gz"
 
 	// 创建压缩文件
