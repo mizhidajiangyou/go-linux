@@ -4,7 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
-	"go-linux/cmd"
+	"github.com/mizhidajiangyou/go-linux/cmd"
 	"io"
 	"os"
 	"path/filepath"
