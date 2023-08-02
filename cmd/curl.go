@@ -8,11 +8,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"mime/multipart"
+	"moul.io/http2curl"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 )
+
+const CurlKey = "c_key"
 
 type CurlCommand struct {
 	// -F Specify multipart MIME data
@@ -31,6 +34,11 @@ type CurlCommand struct {
 	MaxTimes time.Duration
 	// --retry-delay <seconds>  Wait time between retries
 	RetryDelay time.Duration
+}
+
+type CurlData struct {
+	UsedTime time.Duration
+	CurlCmd  string
 }
 
 // Curl http请求
@@ -74,8 +82,12 @@ func Curl(ctx context.Context, url string, com CurlCommand) (statusCode int, req
 	request.Header = com.Header
 	client := http.DefaultClient
 	client.Timeout = com.MaxTimes
+	var used time.Duration
 	for i := 0; i < com.RetryTimes; i++ {
+		start := time.Now()
 		statusCode, resp, err = doCurl(client, request)
+		end := time.Now()
+		used = end.Sub(start)
 		if err != nil {
 			if i == com.RetryTimes-1 {
 				return
@@ -109,7 +121,11 @@ func Curl(ctx context.Context, url string, com CurlCommand) (statusCode int, req
 	}
 
 	err = json.Unmarshal(resp, &reqData)
-
+	command, _ := http2curl.GetCurlCommand(request)
+	ctx = context.WithValue(ctx, CurlKey, CurlData{
+		CurlCmd:  command.String(),
+		UsedTime: used,
+	})
 	return
 
 }
