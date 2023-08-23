@@ -24,14 +24,17 @@ const (
 	errorLogFile   = "log/error.log"
 	commonLogFile  = "log/run.log"
 	maxLogFileSize = 104857600
+	defaultLevel   = zapcore.InfoLevel
 )
 
 func init() {
+
 	// 创建日志文件
 	file, _ = openFile(commonLogFile)
 
 	// 创建日志记录器
-	logger = makeLog(file)
+	logger = makeLog(file, defaultLevel)
+
 }
 
 func openFile(file string) (*os.File, error) {
@@ -63,7 +66,7 @@ func openFile(file string) (*os.File, error) {
 
 }
 
-func makeLog(file *os.File) *zap.Logger {
+func makeLog(file *os.File, l zapcore.Level) *zap.Logger {
 	// 创建 Encoder
 	encoderConfig := zapcore.EncoderConfig{
 		TimeKey:        "time",
@@ -76,8 +79,11 @@ func makeLog(file *os.File) *zap.Logger {
 	encoder := zapcore.NewJSONEncoder(encoderConfig)
 
 	// 创建信息日志 Core
+	//Level := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+	//	return lvl >= zap.NewProductionConfig().Level.Level()
+	//})
 	Level := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
-		return lvl >= zap.NewProductionConfig().Level.Level()
+		return lvl >= l
 	})
 	Core := zapcore.NewCore(encoder, zapcore.AddSync(file), Level)
 
@@ -166,4 +172,23 @@ func compressLogFile(logFile string) error {
 	}
 
 	return nil
+}
+
+func SetLogLevel(lev string) {
+	var logLevel zapcore.Level
+	switch lev {
+	case "debug":
+		logLevel = zapcore.DebugLevel
+	case "info":
+		logLevel = zapcore.InfoLevel
+	case "warn":
+		logLevel = zapcore.WarnLevel
+	case "error":
+		logLevel = zapcore.ErrorLevel
+	default:
+		logLevel = zapcore.InfoLevel
+	}
+
+	logger = makeLog(file, logLevel)
+
 }
