@@ -98,23 +98,32 @@ func makeLog(file *os.File, l zapcore.Level) *zap.Logger {
 }
 
 // Debugf 输出 Debug 级别的日志
-func Debugf(format string) {
-	logger.Debug(format)
+func Debugf(format string, a ...any) {
+	logger.Debug(fmt.Sprintf(format, a...))
 }
 
 // Infof 输出 Info 级别的日志
-func Infof(format string) {
-	logger.Info(format)
+func Infof(format string, a ...any) {
+	logger.Info(fmt.Sprintf(format, a...))
 }
 
 // Errorf 输出 Error 级别的日志
-func Errorf(format string) {
-	logger.Error(format)
+func Errorf(format string, a ...any) {
+	logger.Error(fmt.Sprintf(format, a...))
 }
 
 // Warnf 输出 Error 级别的日志
-func Warnf(format string) {
-	logger.Warn(format)
+func Warnf(format string, a ...any) {
+	logger.Warn(fmt.Sprintf(format, a...))
+}
+
+func Fatalf(format string, a ...any) {
+	logger.Fatal(fmt.Sprintf(format, a...))
+
+}
+
+func Fatal(err error) {
+	logger.Fatal(fmt.Sprintf("%s", err))
 }
 
 // 压缩日志文件
