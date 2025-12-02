@@ -52,75 +52,54 @@ func BashFile(scriptCommand string) error {
 }
 
 type prefixWriter struct {
-	writer io.Writer // 原生 io.Writer（控制台/文件等）
-	prefix string    // 每行输出前缀
+	writer io.Writer
+	prefix string
 }
 
-func (w *prefixWriter) Write(p []byte) (n int, err error) {
+func (w *prefixWriter) Write(p []byte) (int, error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
-
 	output := string(p)
 	prefixedOutput := w.prefix + strings.ReplaceAll(output, "\n", "\n"+w.prefix)
 	if !strings.HasSuffix(prefixedOutput, "\n") {
 		prefixedOutput += "\n"
 	}
-
 	return w.writer.Write([]byte(prefixedOutput))
 }
 
-// BashFileConsole 脚本执行过程输出到控制台
 func BashFileConsole(scriptCommand string) error {
-
 	scriptCommand = os.ExpandEnv(scriptCommand)
-	log.Printf("[INFO] 待执行脚本（已展开环境变量）：%s", scriptCommand)
-
 	parts := strings.Fields(scriptCommand)
 	if len(parts) == 0 {
-		log.Printf("[ERROR] 脚本命令为空")
 		return errors.New("脚本命令为空")
 	}
 
+	// 路径检查与 kubeconfig 验证
 	scriptPath := parts[0]
 	absPath, err := filepath.Abs(scriptPath)
 	if err != nil {
-		errMsg := fmt.Sprintf("脚本路径规范化失败：%s（原始路径：%s）", err.Error(), scriptPath)
-		log.Printf("[ERROR] %s", errMsg)
-		return errors.New(errMsg)
+		return fmt.Errorf("脚本路径规范化失败: %s (原始路径: %s)", err, scriptPath)
 	}
-
 	if _, err := os.Stat(absPath); os.IsNotExist(err) {
-		errMsg := fmt.Sprintf("脚本文件不存在：%s", absPath)
-		log.Printf("[ERROR] %s", errMsg)
-		return errors.New(errMsg)
+		return fmt.Errorf("脚本文件不存在: %s", absPath)
 	}
 
+	// 构建命令
 	args := append([]string{absPath}, parts[1:]...)
-	log.Printf("[INFO] 最终执行参数：/bin/bash %v", args)
-
 	cmd := exec.Command("/bin/bash", args...)
 	cmd.Env = os.Environ()
+	cmd.Stdin = os.Stdin
 
 	stdoutPrefix := fmt.Sprintf("[脚本输出][%s] ", filepath.Base(absPath))
 	stderrPrefix := fmt.Sprintf("[脚本错误][%s] ", filepath.Base(absPath))
+	cmd.Stdout = &prefixWriter{writer: os.Stdout, prefix: stdoutPrefix}
+	cmd.Stderr = &prefixWriter{writer: os.Stderr, prefix: stderrPrefix}
 
-	cmd.Stdout = io.MultiWriter(
-		os.Stdout,
-		&prefixWriter{writer: os.Stdout, prefix: stdoutPrefix},
-	)
-	cmd.Stderr = io.MultiWriter(
-		os.Stderr,
-		&prefixWriter{writer: os.Stderr, prefix: stderrPrefix},
-	)
-
-	log.Printf("[INFO] 开始执行脚本，输出将实时打印到控制台...")
+	// 执行命令
+	log.Printf("[INFO] 开始执行脚本: %s", absPath)
 	if err := cmd.Run(); err != nil {
-		errMsg := fmt.Sprintf("脚本执行失败：%s（脚本路径：%s）", err.Error(), absPath)
-		log.Printf("[ERROR] %s", errMsg)
-		return errors.New(errMsg)
+		return fmt.Errorf("脚本执行失败: %s (脚本路径: %s, PID: %d)", err, absPath, cmd.Process.Pid)
 	}
-
-	log.Printf("[INFO] 脚本执行成功：%s", absPath)
 	return nil
 }
